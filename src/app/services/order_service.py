@@ -70,3 +70,10 @@ class OrderService:
         order.updated_at = self._clock()
         self._order_repository.update(order)
         return order
+
+    def list_reserved(self) -> list[Order]:
+        return [
+            order
+            for order in self._order_repository.list_all()
+            if order.status == OrderStatus.RESERVED
+        ]
