@@ -42,3 +42,16 @@ class OrderService:
         date_part = now.strftime("%Y%m%d")
         sequence = len(self._order_repository.list_all()) + 1
         return f"ORD-{date_part}-{sequence:04d}"
+
+    def approve(self, order_id: str) -> Order:
+        order = self._order_repository.get(order_id)
+        sample = self._sample_repository.get(order.sample_id)
+
+        if sample.stock >= order.quantity:
+            sample.stock -= order.quantity
+            self._sample_repository.update(sample)
+            order.status = OrderStatus.CONFIRMED
+            order.updated_at = self._clock()
+            self._order_repository.update(order)
+
+        return order
