@@ -31,6 +31,8 @@ class MonitoringController:
             "1": self.handle_order_status,
             "2": self.handle_stock,
         }
+        self.handle_order_status()
+        self.handle_stock()
         while True:
             self._view.show_menu()
             choice = self._view.get_menu_choice()

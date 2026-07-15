@@ -7,6 +7,7 @@ from app.repositories.order_repository import JsonOrderRepository
 from app.repositories.sample_repository import JsonSampleRepository
 from app.services.order_service import OrderService
 from app.services.production_service import ProductionService
+from app.services.sample_service import SampleService
 
 FIXED_NOW = datetime(2026, 4, 16, 9, 0, 0)
 
@@ -18,7 +19,9 @@ class FakeView:
         self._decisions = list(decisions or [])
         self.messages: list[str] = []
         self.shown_order_lists: list[list] = []
+        self.shown_previews: list = []
         self.shown_orders: list = []
+        self.shown_transitions: list = []
         self.menu_shown_count = 0
 
     def show_menu(self) -> None:
@@ -33,11 +36,15 @@ class FakeView:
     def get_order_id_to_process(self) -> str:
         return self._order_id_inputs.pop(0)
 
+    def show_order_preview(self, order, stock, estimate) -> None:
+        self.shown_previews.append((order, stock, estimate))
+
     def get_approve_or_reject_decision(self) -> str:
         return self._decisions.pop(0)
 
-    def show_order(self, order) -> None:
+    def show_order_transition(self, previous_status, order) -> None:
         self.shown_orders.append(order)
+        self.shown_transitions.append((previous_status, order.status))
 
     def show_message(self, message: str) -> None:
         self.messages.append(message)
@@ -50,11 +57,16 @@ def make_controller(tmp_path, stock=300, **view_kwargs):
     )
     order_repository = JsonOrderRepository(tmp_path / "orders.json")
     production_service = ProductionService(clock=lambda: FIXED_NOW)
+    sample_service = SampleService(sample_repository)
     service = OrderService(
         order_repository, sample_repository, production_service, clock=lambda: FIXED_NOW
     )
     view = FakeView(**view_kwargs)
-    return OrderApprovalController(service, view), service, view
+    return (
+        OrderApprovalController(service, sample_service, production_service, view),
+        service,
+        view,
+    )
 
 
 def test_handle_list_shows_only_reserved_orders(tmp_path):
@@ -66,6 +78,33 @@ def test_handle_list_shows_only_reserved_orders(tmp_path):
     assert [o.order_id for o in view.shown_order_lists[0]] == [order.order_id]
 
 
+def test_handle_process_shows_shortage_preview_before_decision(tmp_path):
+    controller, service, view = make_controller(tmp_path, stock=4, order_id_inputs=[], decisions=["Y"])
+    order = service.reserve(sample_id="S-001", customer_name="고객", quantity=10)
+    view._order_id_inputs.append(order.order_id)
+
+    controller.handle_process()
+
+    shown_order, stock, estimate = view.shown_previews[0]
+    assert shown_order.order_id == order.order_id
+    assert stock == 4
+    assert estimate.shortage == 6  # 10 - 4
+    assert estimate.actual_quantity == 7  # ceil(6 / 0.9)
+    assert estimate.total_time == 3.5  # 0.5 * 7
+
+
+def test_handle_process_preview_shows_zero_shortage_when_stock_sufficient(tmp_path):
+    controller, service, view = make_controller(tmp_path, stock=300, order_id_inputs=[], decisions=["Y"])
+    order = service.reserve(sample_id="S-001", customer_name="고객", quantity=10)
+    view._order_id_inputs.append(order.order_id)
+
+    controller.handle_process()
+
+    _, _, estimate = view.shown_previews[0]
+    assert estimate.shortage == 0
+    assert estimate.actual_quantity == 0
+
+
 def test_handle_process_approve_decision_confirms_order(tmp_path):
     controller, service, view = make_controller(tmp_path, order_id_inputs=[], decisions=["Y"])
     order = service.reserve(sample_id="S-001", customer_name="고객", quantity=10)
@@ -74,6 +113,7 @@ def test_handle_process_approve_decision_confirms_order(tmp_path):
     controller.handle_process()
 
     assert view.shown_orders[0].status == OrderStatus.CONFIRMED
+    assert view.shown_transitions[0] == (OrderStatus.RESERVED, OrderStatus.CONFIRMED)
 
 
 def test_handle_process_reject_decision_rejects_order(tmp_path):
@@ -84,6 +124,15 @@ def test_handle_process_reject_decision_rejects_order(tmp_path):
     controller.handle_process()
 
     assert view.shown_orders[0].status == OrderStatus.REJECTED
+
+
+def test_run_shows_reserved_orders_by_default_on_entry(tmp_path):
+    controller, service, view = make_controller(tmp_path, menu_choices=["0"])
+    order = service.reserve(sample_id="S-001", customer_name="고객", quantity=10)
+
+    controller.run()
+
+    assert [o.order_id for o in view.shown_order_lists[0]] == [order.order_id]
 
 
 def test_run_dispatches_list_then_process_then_exit(tmp_path):

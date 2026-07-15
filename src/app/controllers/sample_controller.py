@@ -12,7 +12,7 @@ class SampleView(Protocol):
 
     def show_menu(self) -> None: ...
     def get_menu_choice(self) -> str: ...
-    def get_register_input(self) -> dict: ...
+    def get_register_input(self) -> dict | None: ...
     def get_search_keyword(self) -> str: ...
     def show_samples(self, samples: list[Sample]) -> None: ...
     def show_message(self, message: str) -> None: ...
@@ -25,6 +25,9 @@ class SampleController:
 
     def handle_register(self) -> None:
         data = self._view.get_register_input()
+        if data is None:
+            self._view.show_message("시료 등록을 취소했습니다.")
+            return
         try:
             sample = self._service.register(**data)
         except (ValueError, DuplicateSampleIdError) as error:
@@ -45,6 +48,7 @@ class SampleController:
             "2": self.handle_list,
             "3": self.handle_search,
         }
+        self.handle_list()
         while True:
             self._view.show_menu()
             choice = self._view.get_menu_choice()

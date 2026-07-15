@@ -50,7 +50,16 @@ class MainMenuController:
         self._view = view
         self._clock = clock
 
+    def _drain_completed_jobs(self) -> None:
+        """Auto-completes any job whose real elapsed time is already up
+        (PRODUCING -> CONFIRMED) so the summary always reflects current
+        reality, instead of requiring the user to enter the production
+        line menu and explicitly trigger completion first."""
+        while self._order_service.complete_production() is not None:
+            pass
+
     def _build_summary(self) -> dict:
+        self._drain_completed_jobs()
         samples = self._sample_service.list_all()
         return {
             "current_time": self._clock().strftime("%Y-%m-%d %H:%M:%S"),

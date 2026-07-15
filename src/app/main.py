@@ -8,6 +8,7 @@ from app.controllers.production_controller import ProductionController
 from app.controllers.sample_controller import SampleController
 from app.controllers.shipment_controller import ShipmentController
 from app.repositories.order_repository import JsonOrderRepository
+from app.repositories.production_job_repository import JsonProductionJobRepository
 from app.repositories.sample_repository import JsonSampleRepository
 from app.services.monitoring_service import MonitoringService
 from app.services.order_service import OrderService
@@ -23,6 +24,7 @@ from app.views.shipment_view import ConsoleShipmentView
 
 SAMPLES_FILE = "data/samples.json"
 ORDERS_FILE = "data/orders.json"
+PRODUCTION_QUEUE_FILE = "data/production_queue.json"
 
 
 def _force_utf8_console() -> None:
@@ -40,20 +42,24 @@ def _force_utf8_console() -> None:
 def build_main_menu_controller() -> MainMenuController:
     sample_repository = JsonSampleRepository(SAMPLES_FILE)
     order_repository = JsonOrderRepository(ORDERS_FILE)
+    production_job_repository = JsonProductionJobRepository(PRODUCTION_QUEUE_FILE)
 
-    production_service = ProductionService()
+    production_service = ProductionService(repository=production_job_repository)
     sample_service = SampleService(sample_repository)
     order_service = OrderService(order_repository, sample_repository, production_service)
+    order_service.resync_production_queue()
     monitoring_service = MonitoringService(sample_repository, order_repository)
 
     sample_controller = SampleController(sample_service, ConsoleSampleView())
     order_reservation_controller = OrderReservationController(
-        order_service, ConsoleOrderReservationView()
+        order_service, sample_service, ConsoleOrderReservationView()
     )
-    order_approval_controller = OrderApprovalController(order_service, ConsoleOrderApprovalView())
+    order_approval_controller = OrderApprovalController(
+        order_service, sample_service, production_service, ConsoleOrderApprovalView()
+    )
     monitoring_controller = MonitoringController(monitoring_service, ConsoleMonitoringView())
     production_controller = ProductionController(
-        order_service, production_service, ConsoleProductionView()
+        order_service, production_service, sample_service, ConsoleProductionView()
     )
     shipment_controller = ShipmentController(order_service, ConsoleShipmentView())
 

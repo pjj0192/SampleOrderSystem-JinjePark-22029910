@@ -106,6 +106,27 @@ class OrderService:
 
         return order
 
+    def get_order(self, order_id: str) -> Order | None:
+        return self._order_repository.get(order_id)
+
+    def resync_production_queue(self) -> None:
+        """Startup repair: re-enqueues any order left at PRODUCING with no
+        matching ProductionJob in the queue -- e.g. because the production
+        queue file didn't exist yet the last time that transition happened.
+        Without this, such an order is stuck at PRODUCING forever, since
+        nothing is left to actually drive it to completion (this is the
+        'monitoring shows PRODUCING but nothing is producing' symptom)."""
+        queued_order_ids = {job.order_id for job in self._production_service.queue()}
+        producing_orders = sorted(
+            (o for o in self._order_repository.list_all() if o.status == OrderStatus.PRODUCING),
+            key=lambda o: o.updated_at,
+        )
+        for order in producing_orders:
+            if order.order_id in queued_order_ids:
+                continue
+            sample = self._sample_repository.get(order.sample_id)
+            self._production_service.enqueue(order, sample)
+
     def list_reserved(self) -> list[Order]:
         return [
             order

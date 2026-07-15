@@ -60,15 +60,17 @@ def test_choice_2_shows_stock_summary():
     assert view.shown_stock_summary == [{"sample_id": "S-001"}]
 
 
-def test_choice_0_exits_without_calling_service():
+def test_entering_menu_shows_both_summaries_by_default():
     service = FakeService()
     view = FakeView(["0"])
     controller = MonitoringController(service, view)
 
     controller.run()
 
-    assert not service.order_status_summary_called
-    assert not service.stock_summary_called
+    assert service.order_status_summary_called
+    assert service.stock_summary_called
+    assert view.shown_order_summary == {"RESERVED": 1}
+    assert view.shown_stock_summary == [{"sample_id": "S-001"}]
 
 
 def test_invalid_choice_shows_message_and_continues():

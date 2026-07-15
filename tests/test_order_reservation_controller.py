@@ -6,6 +6,7 @@ from app.repositories.order_repository import JsonOrderRepository
 from app.repositories.sample_repository import JsonSampleRepository
 from app.services.order_service import OrderService
 from app.services.production_service import ProductionService
+from app.services.sample_service import SampleService
 
 FIXED_NOW = datetime(2026, 4, 16, 9, 0, 0)
 
@@ -16,6 +17,8 @@ class FakeView:
         self._reservation_inputs = list(reservation_inputs or [])
         self.messages: list[str] = []
         self.shown_orders: list = []
+        self.shown_samples: list = []
+        self.pending_reservation_counts: list[int] = []
         self.menu_shown_count = 0
 
     def show_menu(self) -> None:
@@ -23,6 +26,12 @@ class FakeView:
 
     def get_menu_choice(self) -> str:
         return self._menu_choices.pop(0)
+
+    def show_samples(self, samples) -> None:
+        self.shown_samples.append(list(samples))
+
+    def show_pending_reservations(self, count: int) -> None:
+        self.pending_reservation_counts.append(count)
 
     def get_reservation_input(self) -> dict:
         return self._reservation_inputs.pop(0)
@@ -41,11 +50,12 @@ def make_controller(tmp_path, **view_kwargs):
     )
     order_repository = JsonOrderRepository(tmp_path / "orders.json")
     production_service = ProductionService(clock=lambda: FIXED_NOW)
+    sample_service = SampleService(sample_repository)
     service = OrderService(
         order_repository, sample_repository, production_service, clock=lambda: FIXED_NOW
     )
     view = FakeView(**view_kwargs)
-    return OrderReservationController(service, view), order_repository, view
+    return OrderReservationController(service, sample_service, view), order_repository, view
 
 
 def test_handle_reserve_success_shows_created_order(tmp_path):
@@ -72,6 +82,22 @@ def test_handle_reserve_unknown_sample_shows_error_not_raises(tmp_path):
 
     assert order_repository.list_all() == []
     assert len(view.messages) == 1
+
+
+def test_run_shows_pending_reservation_count_by_default_on_entry(tmp_path):
+    controller, order_repository, view = make_controller(tmp_path, menu_choices=["0"])
+
+    controller.run()
+
+    assert view.pending_reservation_counts == [0]
+
+
+def test_run_shows_available_samples_by_default_on_entry(tmp_path):
+    controller, order_repository, view = make_controller(tmp_path, menu_choices=["0"])
+
+    controller.run()
+
+    assert [s.sample_id for s in view.shown_samples[0]] == ["S-001"]
 
 
 def test_run_dispatches_reserve_then_exit(tmp_path):

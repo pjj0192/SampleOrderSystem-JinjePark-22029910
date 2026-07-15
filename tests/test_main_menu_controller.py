@@ -1,6 +1,9 @@
-from datetime import datetime
+from datetime import datetime, timedelta
+from itertools import chain, repeat
+from unittest.mock import Mock
 
 from app.controllers.main_menu_controller import MainMenuController
+from app.models.order import OrderStatus
 from app.models.sample import Sample
 from app.repositories.order_repository import JsonOrderRepository
 from app.repositories.sample_repository import JsonSampleRepository
@@ -133,6 +136,46 @@ def test_summary_reports_current_time(tmp_path):
     controller.run()
 
     assert view.shown_summaries[0]["current_time"] == "2026-04-16 09:00:00"
+
+
+def test_run_auto_completes_production_before_showing_summary(tmp_path):
+    """Entering the main menu should reflect a job that's already finished
+    without the user having to separately visit the production line menu
+    and trigger '생산 완료 처리' first."""
+    sample_repository = JsonSampleRepository(tmp_path / "samples.json")
+    sample_repository.create(
+        Sample(sample_id="S-001", name="시료", avg_production_time=0.5, yield_rate=0.8, stock=0)
+    )
+    order_repository = JsonOrderRepository(tmp_path / "orders.json")
+    production_clock = Mock(
+        side_effect=chain([FIXED_NOW], repeat(FIXED_NOW + timedelta(seconds=100_000)))
+    )
+    production_service = ProductionService(clock=production_clock, minute_duration_seconds=1)
+    order_service = OrderService(
+        order_repository, sample_repository, production_service, clock=lambda: FIXED_NOW
+    )
+    order = order_service.reserve(sample_id="S-001", customer_name="고객", quantity=16)
+    order_service.approve(order.order_id)  # stock=0 < 16 -> enqueued, PRODUCING
+
+    view = FakeView(["0"])
+    controller = MainMenuController(
+        sample_service=SampleService(sample_repository),
+        order_service=order_service,
+        production_service=production_service,
+        sample_controller=FakeSubController(),
+        order_reservation_controller=FakeSubController(),
+        order_approval_controller=FakeSubController(),
+        monitoring_controller=FakeSubController(),
+        production_controller=FakeSubController(),
+        shipment_controller=FakeSubController(),
+        view=view,
+        clock=lambda: FIXED_NOW,
+    )
+
+    controller.run()
+
+    assert order_repository.get(order.order_id).status == OrderStatus.CONFIRMED
+    assert view.shown_summaries[0]["production_queue_length"] == 0
 
 
 def test_summary_reports_pending_task_counts(tmp_path):

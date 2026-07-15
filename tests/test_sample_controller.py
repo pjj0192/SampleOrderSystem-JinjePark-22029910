@@ -93,13 +93,22 @@ def test_handle_search_shows_matching_samples(tmp_path):
     assert [s.sample_id for s in view.shown_samples[0]] == ["S-001"]
 
 
+def test_run_shows_sample_list_by_default_on_entry(tmp_path):
+    controller, service, view = make_controller(tmp_path, menu_choices=["0"])
+    service.register("S-001", "x", 1.0, 0.9)
+
+    controller.run()
+
+    assert [s.sample_id for s in view.shown_samples[0]] == ["S-001"]
+
+
 def test_run_dispatches_menu_choices_until_exit(tmp_path):
     controller, service, view = make_controller(tmp_path, menu_choices=["2", "0"])
 
     controller.run()
 
     assert view.menu_shown_count == 2
-    assert len(view.shown_samples) == 1
+    assert len(view.shown_samples) == 2
 
 
 def test_run_shows_error_message_for_unknown_choice(tmp_path):

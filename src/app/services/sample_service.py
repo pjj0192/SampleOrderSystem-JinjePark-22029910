@@ -25,6 +25,9 @@ class SampleService:
     def list_all(self) -> list[Sample]:
         return self._repository.list_all()
 
+    def get(self, sample_id: str) -> Sample | None:
+        return self._repository.get(sample_id)
+
     def search_by_name(self, keyword: str) -> list[Sample]:
         needle = keyword.strip().lower()
         return [s for s in self._repository.list_all() if needle in s.name.lower()]

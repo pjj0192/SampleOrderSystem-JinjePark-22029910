@@ -85,6 +85,16 @@ def test_handle_ship_invalid_state_shows_error_not_raises(tmp_path):
     assert len(view.messages) == 1
 
 
+def test_run_shows_confirmed_orders_by_default_on_entry(tmp_path):
+    controller, service, view = make_controller(tmp_path, menu_choices=["0"])
+    order = service.reserve(sample_id="S-001", customer_name="고객", quantity=10)
+    service.approve(order.order_id)
+
+    controller.run()
+
+    assert [o.order_id for o in view.shown_order_lists[0]] == [order.order_id]
+
+
 def test_run_dispatches_list_then_ship_then_exit(tmp_path):
     controller, service, view = make_controller(tmp_path, menu_choices=["1", "2", "0"])
     order = service.reserve(sample_id="S-001", customer_name="고객", quantity=10)
