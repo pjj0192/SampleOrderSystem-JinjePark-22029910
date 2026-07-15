@@ -13,6 +13,7 @@ class ProductionView(Protocol):
         self, current: ProductionJob | None, waiting: list[ProductionJob], detail: dict | None
     ) -> None: ...
     def show_in_progress(self, current: ProductionJob) -> None: ...
+    def show_live_current_and_queue(self, snapshot_fn) -> None: ...
     def show_message(self, message: str) -> None: ...
 
 
@@ -55,6 +56,14 @@ class ProductionController:
             "remaining_seconds": round(remaining_seconds),
         }
 
+    def handle_live_view(self) -> None:
+        self._view.show_live_current_and_queue(self._live_snapshot)
+
+    def _live_snapshot(self) -> tuple[ProductionJob | None, list[ProductionJob], dict | None]:
+        self._drain_completed_jobs()
+        current, waiting = self._production_service.current_and_queue()
+        return current, waiting, self._build_detail(current)
+
     def handle_advance(self) -> None:
         completed = self._order_service.complete_production()
         if completed is not None:
@@ -71,6 +80,7 @@ class ProductionController:
         actions = {
             "1": self.handle_view,
             "2": self.handle_advance,
+            "3": self.handle_live_view,
         }
         self.handle_view()
         while True:

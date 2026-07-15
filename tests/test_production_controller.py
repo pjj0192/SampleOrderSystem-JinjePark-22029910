@@ -36,6 +36,11 @@ class FakeView:
     def show_in_progress(self, current) -> None:
         self.shown_in_progress.append(current)
 
+    def show_live_current_and_queue(self, snapshot_fn) -> None:
+        # Fake "real time passing": call the snapshot twice, as if the
+        # live view refreshed once before the user stopped it.
+        self.live_snapshots = [snapshot_fn(), snapshot_fn()]
+
     def show_message(self, message: str) -> None:
         self.messages.append(message)
 
@@ -115,6 +120,20 @@ def test_handle_view_shows_order_quantity_and_stock_detail(tmp_path):
     # -> progress = 1/10 = 0.1 -> remaining = 10.0 * 0.9 min = 9.0 "minutes";
     # minute_duration_seconds=1 in this test config -> remaining_seconds = 9.0 * 1
     assert detail["remaining_seconds"] == 9
+
+
+def test_handle_live_view_delegates_snapshot_and_drains_completed_jobs(tmp_path):
+    controller, order_service, order_repository, view = make_controller(tmp_path)
+    order = order_service.reserve(sample_id="S-001", customer_name="고객", quantity=16)
+    order_service.approve(order.order_id)
+
+    controller.handle_live_view()
+
+    # snapshot_fn drains completed jobs each time it's called, same as handle_view
+    assert order_repository.get(order.order_id).status == OrderStatus.CONFIRMED
+    first_current, first_waiting, _ = view.live_snapshots[0]
+    assert first_current is None
+    assert first_waiting == []
 
 
 def test_handle_advance_completes_current_job(tmp_path):
