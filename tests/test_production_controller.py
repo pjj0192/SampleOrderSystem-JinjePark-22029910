@@ -1,4 +1,6 @@
-from datetime import datetime
+from datetime import datetime, timedelta
+from itertools import chain, repeat
+from unittest.mock import Mock
 
 from app.controllers.production_controller import ProductionController
 from app.models.order import OrderStatus
@@ -31,13 +33,30 @@ class FakeView:
         self.messages.append(message)
 
 
-def make_controller(tmp_path, stock=0, yield_rate=0.8, **view_kwargs):
+def _finished_clock():
+    """Enqueue sees FIXED_NOW; every clock() call after that sees a time far
+    enough in the future that the job reads as complete (minute_duration_
+    seconds=1 test mode). Using an unbounded repeat() means it doesn't
+    matter how many times advance()/current_and_queue() call the clock."""
+    return Mock(side_effect=chain([FIXED_NOW], repeat(FIXED_NOW + timedelta(seconds=100_000))))
+
+
+def _in_progress_clock():
+    """Enqueue sees FIXED_NOW; every later call sees only 1 elapsed second
+    -- nowhere near total_time (10 minutes for a 16-unit/0.8-yield order),
+    so the job never reads as complete."""
+    return Mock(side_effect=chain([FIXED_NOW], repeat(FIXED_NOW + timedelta(seconds=1))))
+
+
+def make_controller(tmp_path, stock=0, yield_rate=0.8, clock=None, **view_kwargs):
     sample_repository = JsonSampleRepository(tmp_path / "samples.json")
     sample_repository.create(
         Sample(sample_id="S-001", name="시료", avg_production_time=0.5, yield_rate=yield_rate, stock=stock)
     )
     order_repository = JsonOrderRepository(tmp_path / "orders.json")
-    production_service = ProductionService(clock=lambda: FIXED_NOW)
+    production_service = ProductionService(
+        clock=clock or _finished_clock(), minute_duration_seconds=1
+    )
     order_service = OrderService(
         order_repository, sample_repository, production_service, clock=lambda: FIXED_NOW
     )
@@ -67,6 +86,19 @@ def test_handle_advance_completes_current_job(tmp_path):
 
     assert order_repository.get(order.order_id).status == OrderStatus.CONFIRMED
     assert len(view.messages) == 1
+
+
+def test_handle_advance_not_yet_complete_shows_progress_message(tmp_path):
+    controller, order_service, order_repository, view = make_controller(
+        tmp_path, clock=_in_progress_clock()
+    )
+    order = order_service.reserve(sample_id="S-001", customer_name="고객", quantity=16)
+    order_service.approve(order.order_id)
+
+    controller.handle_advance()
+
+    assert order_repository.get(order.order_id).status == OrderStatus.PRODUCING
+    assert any("아직" in m for m in view.messages)
 
 
 def test_handle_advance_with_empty_queue_shows_message(tmp_path):

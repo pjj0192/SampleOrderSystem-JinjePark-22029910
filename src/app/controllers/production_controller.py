@@ -28,10 +28,17 @@ class ProductionController:
 
     def handle_advance(self) -> None:
         completed = self._order_service.complete_production()
-        if completed is None:
-            self._view.show_message("대기 중인 생산 작업이 없습니다.")
+        if completed is not None:
+            self._view.show_message(f"생산 완료: {completed.order_id} -> CONFIRMED")
             return
-        self._view.show_message(f"생산 완료: {completed.order_id} -> CONFIRMED")
+
+        current, _ = self._production_service.current_and_queue()
+        if current is None:
+            self._view.show_message("대기 중인 생산 작업이 없습니다.")
+        else:
+            self._view.show_message(
+                f"아직 생산 중입니다 (진행률 {current.progress * 100:.0f}%)."
+            )
 
     def run(self) -> None:
         actions = {

@@ -1,4 +1,5 @@
-from datetime import datetime
+from datetime import datetime, timedelta
+from unittest.mock import Mock
 
 from app.models.order import OrderStatus
 from app.models.sample import Sample
@@ -8,6 +9,11 @@ from app.services.order_service import OrderService
 from app.services.production_service import ProductionService
 
 FIXED_NOW = datetime(2026, 4, 16, 9, 0, 0)
+
+# Comfortably longer than any total_time used in these tests (minutes), so
+# with minute_duration_seconds=1 (test mode) the enqueued job always reads
+# as complete by the time complete_production() checks it.
+ELAPSED_SECONDS_ENOUGH_TO_FINISH = 100_000
 
 
 def make_service(tmp_path, stock: int, yield_rate: float):
@@ -22,7 +28,10 @@ def make_service(tmp_path, stock: int, yield_rate: float):
         )
     )
     order_repository = JsonOrderRepository(tmp_path / "orders.json")
-    production_service = ProductionService(clock=lambda: FIXED_NOW)
+    production_clock = Mock(
+        side_effect=[FIXED_NOW, FIXED_NOW + timedelta(seconds=ELAPSED_SECONDS_ENOUGH_TO_FINISH)]
+    )
+    production_service = ProductionService(clock=production_clock, minute_duration_seconds=1)
     service = OrderService(
         order_repository, sample_repository, production_service, clock=lambda: FIXED_NOW
     )
