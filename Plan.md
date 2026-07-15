@@ -173,10 +173,17 @@ Service 간 의존은 단방향으로 제한한다: `OrderService`가 재고 부
 
 ## 완료 기준 (DoD)
 
-- [ ] PRD.md의 6개 메뉴 기능이 모두 콘솔에서 동작
-- [ ] 애플리케이션 재시작 후에도 시료/주문 데이터가 유지됨
-- [ ] 주문 상태 전이 규칙(§5)과 생산 완료 후 잉여 재고 규칙(§7.5)이 테스트로 정확히 검증됨
-- [ ] 모니터링 판정 기준(잔여율 50% 경계, `REJECTED` 제외)이 테스트로 검증됨
-- [ ] `pytest` 전체 통과
-- [ ] 커밋 로그가 Phase/Step 순서의 test→feat(→chore) 쌍으로 구성
-- [ ] README에 실행 방법 명시, GitHub Public 저장소에 push 완료
+- [x] PRD.md의 6개 메뉴 기능이 모두 콘솔에서 동작 — `tests/test_main_smoke.py` +
+      수동 실행으로 등록→주문→승인(생산 경로)→모니터링→생산 완료(잉여 재고 반영)→
+      출고까지 전체 여정 확인
+- [x] 애플리케이션 재시작 후에도 시료/주문 데이터가 유지됨 —
+      `JsonSampleRepository`/`JsonOrderRepository`의 재실행 지속성 테스트 +
+      수동 실행 시 `data/*.json` 내용 확인
+- [x] 주문 상태 전이 규칙(§5)과 생산 완료 후 잉여 재고 규칙(§7.5)이 테스트로 정확히
+      검증됨 — `tests/test_order_service_complete_production.py`가 PRD.md 예시
+      수치(주문 16/수율 0.8→실생산량 20→재고 4)를 그대로 검증
+- [x] 모니터링 판정 기준(잔여율 50% 경계, `REJECTED` 제외)이 테스트로 검증됨 —
+      `tests/test_monitoring_service_stock_summary.py`/`test_monitoring_service_order_summary.py`
+- [x] `pytest` 전체 통과 — 134개 전부 통과
+- [x] 커밋 로그가 Phase/Step 순서의 test→feat(→chore) 쌍으로 구성 — `git log --oneline` 확인
+- [x] README에 실행 방법 명시, GitHub Public 저장소에 push 완료
