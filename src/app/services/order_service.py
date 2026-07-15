@@ -63,3 +63,10 @@ class OrderService:
             self._order_repository.update(order)
 
         return order
+
+    def reject(self, order_id: str) -> Order:
+        order = self._order_repository.get(order_id)
+        order.status = OrderStatus.REJECTED
+        order.updated_at = self._clock()
+        self._order_repository.update(order)
+        return order
