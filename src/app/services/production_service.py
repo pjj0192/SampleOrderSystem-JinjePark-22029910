@@ -38,3 +38,12 @@ class ProductionService:
 
     def queue(self) -> list[ProductionJob]:
         return list(self._queue)
+
+    def advance(self) -> ProductionJob | None:
+        """Completes the job at the front of the FIFO queue (this
+        simulation treats production as finishing all-at-once rather than
+        ticking progress over time) and returns it, or None if the queue
+        is empty."""
+        if not self._queue:
+            return None
+        return self._queue.popleft()
