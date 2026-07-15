@@ -1,4 +1,5 @@
 from app.models.sample import Sample
+from app.views.input_helpers import prompt_float, prompt_nonblank_str
 
 
 class ConsoleSampleView:
@@ -12,10 +13,12 @@ class ConsoleSampleView:
         return input("선택 > ").strip()
 
     def get_register_input(self) -> dict:
-        sample_id = input("시료 ID > ").strip()
-        name = input("이름 > ").strip()
-        avg_production_time = float(input("평균 생산시간(min/ea) > ").strip())
-        yield_rate = float(input("수율(0~1) > ").strip())
+        sample_id = prompt_nonblank_str("시료 ID > ")
+        name = prompt_nonblank_str("이름 > ")
+        avg_production_time = prompt_float(
+            "평균 생산시간(min/ea) > ", min_value=0, exclusive_min=True
+        )
+        yield_rate = prompt_float("수율(0~1) > ", min_value=0, max_value=1, exclusive_min=True)
         return {
             "sample_id": sample_id,
             "name": name,

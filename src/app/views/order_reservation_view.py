@@ -1,4 +1,5 @@
 from app.models.order import Order
+from app.views.input_helpers import prompt_int, prompt_nonblank_str
 
 
 class ConsoleOrderReservationView:
@@ -10,9 +11,9 @@ class ConsoleOrderReservationView:
         return input("선택 > ").strip()
 
     def get_reservation_input(self) -> dict:
-        sample_id = input("시료 ID > ").strip()
-        customer_name = input("고객명 > ").strip()
-        quantity = int(input("주문 수량 > ").strip())
+        sample_id = prompt_nonblank_str("시료 ID > ")
+        customer_name = prompt_nonblank_str("고객명 > ")
+        quantity = prompt_int("주문 수량 > ", min_value=1)
         return {"sample_id": sample_id, "customer_name": customer_name, "quantity": quantity}
 
     def show_order(self, order: Order) -> None:

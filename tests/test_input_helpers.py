@@ -1,4 +1,4 @@
-from app.views.input_helpers import prompt_float, prompt_int, prompt_nonblank_str
+from app.views.input_helpers import prompt_choice, prompt_float, prompt_int, prompt_nonblank_str
 
 
 def _feed_inputs(monkeypatch, values):
@@ -74,3 +74,18 @@ def test_prompt_float_retries_when_above_max_value(monkeypatch, capsys):
     result = prompt_float("prompt > ", max_value=1.0)
 
     assert result == 0.9
+
+
+def test_prompt_choice_returns_matching_uppercased_value(monkeypatch):
+    _feed_inputs(monkeypatch, ["y"])
+
+    assert prompt_choice("prompt > ", {"Y", "N"}) == "Y"
+
+
+def test_prompt_choice_retries_on_value_not_in_choices(monkeypatch, capsys):
+    _feed_inputs(monkeypatch, ["maybe", "N"])
+
+    result = prompt_choice("prompt > ", {"Y", "N"})
+
+    assert result == "N"
+    assert "다시 입력" in capsys.readouterr().out

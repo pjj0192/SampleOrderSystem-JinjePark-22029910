@@ -15,6 +15,14 @@ def prompt_nonblank_str(prompt: str) -> str:
         print("빈 값은 입력할 수 없습니다. 다시 입력해주세요.")
 
 
+def prompt_choice(prompt: str, valid_choices: set[str]) -> str:
+    while True:
+        raw = input(prompt).strip().upper()
+        if raw in valid_choices:
+            return raw
+        print(f"{sorted(valid_choices)} 중 하나를 입력해주세요. 다시 입력해주세요.")
+
+
 def prompt_int(prompt: str, *, min_value: int | None = None) -> int:
     while True:
         raw = input(prompt).strip()
