@@ -18,6 +18,7 @@ class FakeView:
         self._menu_choices = list(menu_choices or [])
         self.messages: list[str] = []
         self.shown_states: list[tuple] = []
+        self.shown_in_progress: list = []
         self.menu_shown_count = 0
 
     def show_menu(self) -> None:
@@ -28,6 +29,9 @@ class FakeView:
 
     def show_current_and_queue(self, current, waiting) -> None:
         self.shown_states.append((current, list(waiting)))
+
+    def show_in_progress(self, current) -> None:
+        self.shown_in_progress.append(current)
 
     def show_message(self, message: str) -> None:
         self.messages.append(message)
@@ -98,7 +102,7 @@ def test_handle_advance_not_yet_complete_shows_progress_message(tmp_path):
     controller.handle_advance()
 
     assert order_repository.get(order.order_id).status == OrderStatus.PRODUCING
-    assert any("아직" in m for m in view.messages)
+    assert view.shown_in_progress[0].order_id == order.order_id
 
 
 def test_handle_advance_with_empty_queue_shows_message(tmp_path):

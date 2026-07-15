@@ -11,6 +11,7 @@ class ProductionView(Protocol):
     def show_current_and_queue(
         self, current: ProductionJob | None, waiting: list[ProductionJob]
     ) -> None: ...
+    def show_in_progress(self, current: ProductionJob) -> None: ...
     def show_message(self, message: str) -> None: ...
 
 
@@ -36,9 +37,7 @@ class ProductionController:
         if current is None:
             self._view.show_message("대기 중인 생산 작업이 없습니다.")
         else:
-            self._view.show_message(
-                f"아직 생산 중입니다 (진행률 {current.progress * 100:.0f}%)."
-            )
+            self._view.show_in_progress(current)
 
     def run(self) -> None:
         actions = {
