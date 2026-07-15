@@ -105,6 +105,13 @@ class OrderService:
             if order.status == OrderStatus.RESERVED
         ]
 
+    def list_confirmed(self) -> list[Order]:
+        return [
+            order
+            for order in self._order_repository.list_all()
+            if order.status == OrderStatus.CONFIRMED
+        ]
+
     def ship(self, order_id: str) -> Order:
         order = self._order_repository.get(order_id)
         if order.status != OrderStatus.CONFIRMED:
