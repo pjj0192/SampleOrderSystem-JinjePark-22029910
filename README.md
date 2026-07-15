@@ -94,19 +94,19 @@ pytest
 
 ```
 src/app/
-├── models/          # Sample, Order(+OrderStatus), ProductionJob
+├── models/           # Sample, Order(+OrderStatus), ProductionJob
 ├── repositories/     # JSON CRUD Repository (Sample/Order/ProductionJob 큐)
-├── services/          # SampleService, OrderService, ProductionService, MonitoringService
-├── controllers/        # 메뉴별 Controller (View 프로토콜에만 의존)
-├── views/                # 콘솔 입출력
-│   ├── console_format.py     # 표/배너 공통 포맷팅 (CJK 폭 계산, 박스 표)
+├── services/         # SampleService, OrderService, ProductionService, MonitoringService
+├── controllers/      # 메뉴별 Controller (View 프로토콜에만 의존)
+├── views/            # 콘솔 입출력
+│   ├── console_format.py       # 표/배너 공통 포맷팅 (CJK 폭 계산, 박스 표)
 │   ├── live_refresh.py         # 생산라인 실시간 보기용 화면 갱신/키 입력 대기
-│   ├── progress_bar.py           # 진행률/잔여율 막대 렌더링
-│   └── input_helpers.py            # 입력 검증/재입력, 0=취소 프롬프트 헬퍼
-├── tools/                 # seed_samples.py (더미 데이터 시드 스크립트, 선택 도구)
+│   ├── progress_bar.py         # 진행률/잔여율 막대 렌더링
+│   └── input_helpers.py        # 입력 검증/재입력, 0=취소 프롬프트 헬퍼
+├── tools/                  # seed_samples.py (더미 데이터 시드 스크립트, 선택 도구)
 └── main.py                 # 진입점 (조립 + 메인 메뉴 루프)
 tests/
-data/                        # 런타임 JSON 데이터 (git에 커밋하지 않음)
+data/                       # 런타임 JSON 데이터 (git에 커밋하지 않음)
 ```
 
 의존 방향: `controllers` → `services` → `repositories`/`models`, `controllers` → `views`.
