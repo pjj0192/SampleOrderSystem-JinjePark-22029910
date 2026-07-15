@@ -11,7 +11,7 @@
 
 - Python 3.11+
 
-## 설치
+## 설치 (pytest)
 
 ```bash
 pip install -r requirements.txt
