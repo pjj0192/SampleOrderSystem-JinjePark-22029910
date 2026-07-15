@@ -71,6 +71,29 @@ class OrderService:
         self._order_repository.update(order)
         return order
 
+    def complete_production(self) -> Order | None:
+        """PRD.md §7.5: the completed job's actual_quantity is received into
+        stock in full (yield_rate only sized how much to produce -- it does
+        not mean part of the output is scrapped), then the order's quantity
+        is deducted to confirm it. Whatever remains
+        (actual_quantity - shortage) stays in stock as surplus."""
+        job = self._production_service.advance()
+        if job is None:
+            return None
+
+        order = self._order_repository.get(job.order_id)
+        sample = self._sample_repository.get(job.sample_id)
+
+        sample.stock += job.actual_quantity
+        sample.stock -= order.quantity
+        self._sample_repository.update(sample)
+
+        order.status = OrderStatus.CONFIRMED
+        order.updated_at = self._clock()
+        self._order_repository.update(order)
+
+        return order
+
     def list_reserved(self) -> list[Order]:
         return [
             order
