@@ -39,6 +39,15 @@ class ProductionService:
     def queue(self) -> list[ProductionJob]:
         return list(self._queue)
 
+    def current_and_queue(self) -> tuple[ProductionJob | None, list[ProductionJob]]:
+        """Splits the FIFO queue into the job that would be completed next
+        (the "currently processing" job in PRD.md §7.5's UI example) and
+        the jobs still waiting behind it."""
+        if not self._queue:
+            return None, []
+        jobs = list(self._queue)
+        return jobs[0], jobs[1:]
+
     def advance(self) -> ProductionJob | None:
         """Completes the job at the front of the FIFO queue (this
         simulation treats production as finishing all-at-once rather than
