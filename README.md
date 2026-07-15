@@ -27,7 +27,51 @@ PYTHONPATH=src python -m app.main
 
 실행하면 시료 관리 / 시료 주문 / 주문 승인·거절 / 모니터링 / 생산라인 조회 / 출고 처리
 6개 메뉴가 있는 콘솔 화면이 표시됩니다. 데이터는 `data/samples.json`,
-`data/orders.json`에 저장되며, 앱을 다시 실행해도 유지됩니다.
+`data/orders.json`, `data/production_queue.json`에 저장되며, 앱을 다시 실행해도
+유지됩니다 (생산 큐까지 영속화되므로, 생산 중이던 주문도 재시작 후 안전하게 이어집니다).
+
+## 주요 기능
+
+메인 메뉴에는 항상 시스템 시간, 등록 시료 수, 총 재고, 전체 주문 건수, 생산라인 대기
+건수, 그리고 승인/출고 대기 건수가 요약되어 표시됩니다. 각 서브 메뉴는 진입하자마자
+현재 상태를 보여주므로, 굳이 하위 메뉴를 한 번 더 선택하지 않아도 됩니다.
+
+### 1. 시료 관리
+- 시료 등록 / 전체 목록 / 이름 검색
+- 목록은 8건씩 페이지 단위로 표시되며 `N`을 입력하면 다음 페이지로 넘어갑니다.
+- 등록 중 어느 입력 단계에서든 `0`을 입력하면 등록을 취소하고 메뉴로 돌아갑니다.
+
+### 2. 시료 주문 (예약)
+- 메뉴 진입 시 주문 가능한 시료 목록(재고 포함)과 현재 승인 대기 건수를 자동으로
+  보여줍니다.
+- 시료 ID / 고객명 / 수량 입력 중 `0`을 입력하면 주문을 취소합니다.
+
+### 3. 주문 승인 / 거절
+- 접수된(RESERVED) 주문 목록을 진입 시 자동으로 보여줍니다.
+- 승인/거절 결정을 내리기 전에 주문량, 현재 재고, 부족분, 예상 실생산량, 예상
+  생산시간을 미리 계산해서 보여줍니다 (재고가 충분하면 "생산 없이 즉시 승인 가능"으로
+  안내).
+- 결정 후에는 `RESERVED -> CONFIRMED / PRODUCING / REJECTED`처럼 상태 변화를 명시적으로
+  보여줍니다.
+
+### 4. 모니터링
+- 주문량 확인: 상태별(`RESERVED`/`CONFIRMED`/`PRODUCING`/`RELEASED`) 주문 건수
+  (`REJECTED`는 집계 제외).
+- 재고량 확인: 시료ID/시료명/재고(ea)/여유·부족·고갈 상태/잔여율(%)에 더해 잔여율을
+  막대(bar)로도 시각화합니다.
+
+### 5. 생산라인 조회
+- 메뉴 진입 시 현재 FIFO 큐의 맨 앞 작업에 대해 주문량, 현재 재고, 부족분, 실생산량,
+  완료까지 남은 시간(초), 진행률 막대를 기본으로 보여줍니다.
+- **실시간 보기(`[3]`)**: 화면을 1초마다 자동으로 새로 그려 생산 진행 상황을 실시간으로
+  볼 수 있습니다. `Enter`를 누르면 즉시 종료됩니다.
+- 실제 경과 시간이 다 된 작업은 이 메뉴뿐 아니라 메인 메뉴에 진입할 때도 자동으로
+  `PRODUCING -> CONFIRMED`로 완료 처리되므로, 별도로 "생산 완료 처리"를 누르지 않아도
+  됩니다 (필요하면 `[2]`로 수동 확인도 가능).
+
+### 6. 출고 처리
+- 출고 가능한(`CONFIRMED`) 주문 목록 확인 및 출고(`RELEASED`) 처리.
+- 주문 번호 입력 중 `0`을 입력하면 출고 처리를 취소합니다.
 
 ### 더미 데이터로 빠르게 시작하기 (선택)
 
@@ -51,10 +95,14 @@ pytest
 ```
 src/app/
 ├── models/          # Sample, Order(+OrderStatus), ProductionJob
-├── repositories/     # JSON CRUD Repository (Sample/Order)
+├── repositories/     # JSON CRUD Repository (Sample/Order/ProductionJob 큐)
 ├── services/          # SampleService, OrderService, ProductionService, MonitoringService
 ├── controllers/        # 메뉴별 Controller (View 프로토콜에만 의존)
 ├── views/                # 콘솔 입출력
+│   ├── console_format.py     # 표/배너 공통 포맷팅 (CJK 폭 계산, 박스 표)
+│   ├── live_refresh.py         # 생산라인 실시간 보기용 화면 갱신/키 입력 대기
+│   ├── progress_bar.py           # 진행률/잔여율 막대 렌더링
+│   └── input_helpers.py            # 입력 검증/재입력, 0=취소 프롬프트 헬퍼
 ├── tools/                 # seed_samples.py (더미 데이터 시드 스크립트, 선택 도구)
 └── main.py                 # 진입점 (조립 + 메인 메뉴 루프)
 tests/
