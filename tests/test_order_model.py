@@ -55,3 +55,20 @@ def test_order_status_enum_has_expected_members():
         "CONFIRMED",
         "RELEASED",
     }
+
+
+def test_to_dict_and_from_dict_round_trip():
+    original = make_order()
+
+    restored = Order.from_dict(original.to_dict())
+
+    assert restored == original
+
+
+def test_to_dict_serializes_status_and_timestamps_as_strings():
+    order = make_order()
+
+    data = order.to_dict()
+
+    assert data["status"] == "RESERVED"
+    assert data["created_at"] == "2026-04-16T09:00:00"

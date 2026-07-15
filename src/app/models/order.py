@@ -30,3 +30,26 @@ class Order:
             raise ValueError("customer_name must not be blank")
         if self.quantity <= 0:
             raise ValueError("quantity must be positive")
+
+    def to_dict(self) -> dict:
+        return {
+            "order_id": self.order_id,
+            "sample_id": self.sample_id,
+            "customer_name": self.customer_name,
+            "quantity": self.quantity,
+            "status": self.status.value,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "Order":
+        return cls(
+            order_id=data["order_id"],
+            sample_id=data["sample_id"],
+            customer_name=data["customer_name"],
+            quantity=data["quantity"],
+            status=OrderStatus(data["status"]),
+            created_at=datetime.fromisoformat(data["created_at"]),
+            updated_at=datetime.fromisoformat(data["updated_at"]),
+        )
