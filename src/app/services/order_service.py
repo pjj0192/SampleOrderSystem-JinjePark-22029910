@@ -105,6 +105,9 @@ class OrderService:
             if order.status == OrderStatus.RESERVED
         ]
 
+    def total_order_count(self) -> int:
+        return len(self._order_repository.list_all())
+
     def list_confirmed(self) -> list[Order]:
         return [
             order
