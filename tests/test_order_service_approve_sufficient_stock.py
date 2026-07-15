@@ -5,6 +5,7 @@ from app.models.sample import Sample
 from app.repositories.order_repository import JsonOrderRepository
 from app.repositories.sample_repository import JsonSampleRepository
 from app.services.order_service import OrderService
+from app.services.production_service import ProductionService
 
 FIXED_NOW = datetime(2026, 4, 16, 9, 0, 0)
 
@@ -21,7 +22,10 @@ def make_service(tmp_path, stock: int):
         )
     )
     order_repository = JsonOrderRepository(tmp_path / "orders.json")
-    service = OrderService(order_repository, sample_repository, clock=lambda: FIXED_NOW)
+    production_service = ProductionService(clock=lambda: FIXED_NOW)
+    service = OrderService(
+        order_repository, sample_repository, production_service, clock=lambda: FIXED_NOW
+    )
     return service, order_repository, sample_repository
 
 

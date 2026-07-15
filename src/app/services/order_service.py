@@ -4,6 +4,7 @@ from datetime import datetime
 from app.models.order import Order, OrderStatus
 from app.repositories.order_repository import JsonOrderRepository
 from app.repositories.sample_repository import JsonSampleRepository, SampleNotFoundError
+from app.services.production_service import ProductionService
 
 
 class OrderService:
@@ -14,10 +15,12 @@ class OrderService:
         self,
         order_repository: JsonOrderRepository,
         sample_repository: JsonSampleRepository,
+        production_service: ProductionService,
         clock: Callable[[], datetime] = datetime.now,
     ) -> None:
         self._order_repository = order_repository
         self._sample_repository = sample_repository
+        self._production_service = production_service
         self._clock = clock
 
     def reserve(self, sample_id: str, customer_name: str, quantity: int) -> Order:
@@ -51,6 +54,11 @@ class OrderService:
             sample.stock -= order.quantity
             self._sample_repository.update(sample)
             order.status = OrderStatus.CONFIRMED
+            order.updated_at = self._clock()
+            self._order_repository.update(order)
+        else:
+            self._production_service.enqueue(order, sample)
+            order.status = OrderStatus.PRODUCING
             order.updated_at = self._clock()
             self._order_repository.update(order)
 
