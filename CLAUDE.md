@@ -1,7 +1,8 @@
 # CLAUDE.md — SampleOrderSystem
 
 이 파일은 이 저장소에서 작업하는 Claude Code(및 기타 에이전트)를 위한 가이드입니다.
-전체 요구사항은 [PRD.md](./PRD.md), 구현 계획은 [Plan.md](./Plan.md)를 참고하세요.
+전체 요구사항은 [PRD.md](./PRD.md), 구현 계획은 [Plan.md](./Plan.md), TDD 절차는
+[.claude/skills/tdd-skill/SKILL.md](./.claude/skills/tdd-skill/SKILL.md)를 참고하세요.
 
 ## 프로젝트 개요
 
@@ -56,10 +57,22 @@ data/                   # 런타임 JSON 데이터 (git에 커밋하지 않음)
 
 ## 작업 원칙
 
-- **TDD (Red-Green-Refactor)**: [Plan.md](./Plan.md)의 각 Phase에서 `test`→`feat`로
-  표시된 Step은 반드시 테스트를 먼저 작성해 실패를 확인한 뒤 구현한다. `chore`로 표시된
-  Step(PoC에서의 이식)은 기존 테스트를 그대로 가져오며 새로 Red 단계를 만들지 않는다.
-  View/`main.py` 등 I/O 계층은 가벼운 스모크 테스트 + 수동 실행 확인으로 대체한다.
+- **TDD (Red-Green-Review)**: [.claude/skills/tdd-skill/SKILL.md](./.claude/skills/tdd-skill/SKILL.md)를
+  따른다. [Plan.md](./Plan.md)의 각 Phase에서 `test`→`feat`로 표시된 Step은:
+  1. **RED** — 실패하는 테스트를 먼저 작성하고, 실제로 실패하는지(그리고 기대한
+     이유로 실패하는지) 반드시 확인한다.
+  2. **GREEN** — 테스트를 통과시키는 최소 구현만 작성하고, 전체 테스트가 통과하는지
+     확인한다.
+  3. **REVIEW** — **여기서 반드시 멈춘다.** 커밋하지 않고 diff를 사용자에게 보여주고
+     승인을 기다린다. 변경 요청이 있으면 반영 후 다시 테스트를 돌리고 REVIEW로 복귀한다.
+  4. **COMMIT** — 사용자가 명시적으로 승인한 뒤에만, 이 사이클(테스트+최소 구현) 하나를
+     커밋한다. **여러 RED-GREEN 사이클을 한 커밋에 몰아넣지 않는다.** 현재 사이클이
+     커밋되기 전에는 다음 RED를 시작하지 않는다.
+  - `chore`로 표시된 Step(PoC에서의 이식)은 기존 테스트를 그대로 가져오며 새로 RED
+    단계를 만들지 않는다. 다만 이식 결과도 커밋 전에는 동일하게 사용자에게 보여주고
+    승인을 받는다.
+  - View/`main.py` 등 I/O 계층은 가벼운 스모크 테스트 + 수동 실행 확인으로 대체하되,
+    커밋 전 REVIEW 절차는 동일하게 적용한다.
 - **테스트 우선순위** (여러 Phase에 걸친 로직을 다시 만질 때 우선순위 판단 기준):
   1. 주문 상태 전이 규칙
   2. 재고/생산 계산식 (부족분, 실생산량, 총 생산시간)
