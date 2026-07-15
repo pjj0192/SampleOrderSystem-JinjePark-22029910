@@ -1,5 +1,6 @@
 from typing import Protocol
 
+from app.controllers.order_lookup import resolve_order_id
 from app.models.order import Order
 from app.services.order_service import InvalidOrderStateError, OrderService
 
@@ -23,7 +24,12 @@ class OrderApprovalController:
         self._view.show_reserved_orders(self._service.list_reserved())
 
     def handle_process(self) -> None:
-        order_id = self._view.get_order_id_to_process()
+        raw_order_id = self._view.get_order_id_to_process()
+        order_id = resolve_order_id(raw_order_id, self._service.list_reserved())
+        if order_id is None:
+            self._view.show_message(f"'{raw_order_id}'에 해당하는 주문을 찾을 수 없습니다.")
+            return
+
         decision = self._view.get_approve_or_reject_decision()
         try:
             if decision == "Y":

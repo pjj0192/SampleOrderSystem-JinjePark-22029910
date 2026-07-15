@@ -119,3 +119,34 @@ def test_handle_process_on_already_processed_order_shows_error_not_raises(tmp_pa
 
     assert view.shown_orders == []
     assert len(view.messages) == 1
+
+
+def test_handle_process_accepts_1_based_index_into_reserved_list(tmp_path):
+    controller, service, view = make_controller(tmp_path, order_id_inputs=["2"], decisions=["Y"])
+    service.reserve(sample_id="S-001", customer_name="A", quantity=10)
+    second = service.reserve(sample_id="S-001", customer_name="B", quantity=10)
+
+    controller.handle_process()
+
+    assert view.shown_orders[0].order_id == second.order_id
+
+
+def test_handle_process_accepts_unique_order_id_suffix(tmp_path):
+    controller, service, view = make_controller(tmp_path, decisions=["Y"])
+    order = service.reserve(sample_id="S-001", customer_name="고객", quantity=10)
+    suffix = order.order_id[-4:]
+    view._order_id_inputs.append(suffix)
+
+    controller.handle_process()
+
+    assert view.shown_orders[0].order_id == order.order_id
+
+
+def test_handle_process_unresolvable_input_shows_error_not_raises(tmp_path):
+    controller, service, view = make_controller(tmp_path, order_id_inputs=["nonexistent"])
+    service.reserve(sample_id="S-001", customer_name="고객", quantity=10)
+
+    controller.handle_process()
+
+    assert view.shown_orders == []
+    assert len(view.messages) == 1

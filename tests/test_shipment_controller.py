@@ -103,3 +103,37 @@ def test_run_shows_error_message_for_unknown_choice(tmp_path):
     controller.run()
 
     assert any("잘못된" in m for m in view.messages)
+
+
+def test_handle_ship_accepts_1_based_index_into_confirmed_list(tmp_path):
+    controller, service, view = make_controller(tmp_path, order_id_inputs=["2"])
+    first = service.reserve(sample_id="S-001", customer_name="A", quantity=10)
+    second = service.reserve(sample_id="S-001", customer_name="B", quantity=10)
+    service.approve(first.order_id)
+    service.approve(second.order_id)
+
+    controller.handle_ship()
+
+    assert view.shown_orders[0].order_id == second.order_id
+
+
+def test_handle_ship_accepts_unique_order_id_suffix(tmp_path):
+    controller, service, view = make_controller(tmp_path)
+    order = service.reserve(sample_id="S-001", customer_name="고객", quantity=10)
+    service.approve(order.order_id)
+    view._order_id_inputs.append(order.order_id[-4:])
+
+    controller.handle_ship()
+
+    assert view.shown_orders[0].order_id == order.order_id
+
+
+def test_handle_ship_unresolvable_input_shows_error_not_raises(tmp_path):
+    controller, service, view = make_controller(tmp_path, order_id_inputs=["nonexistent"])
+    order = service.reserve(sample_id="S-001", customer_name="고객", quantity=10)
+    service.approve(order.order_id)
+
+    controller.handle_ship()
+
+    assert view.shown_orders == []
+    assert len(view.messages) == 1
