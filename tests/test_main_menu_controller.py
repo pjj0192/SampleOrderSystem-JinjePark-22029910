@@ -70,12 +70,13 @@ def make_controller(tmp_path, menu_choices):
         production_controller=sub_controllers["production"],
         shipment_controller=sub_controllers["shipment"],
         view=view,
+        clock=lambda: FIXED_NOW,
     )
-    return controller, sub_controllers, view
+    return controller, sub_controllers, view, order_service
 
 
 def test_summary_reports_sample_count_and_total_stock(tmp_path):
-    controller, _, view = make_controller(tmp_path, menu_choices=["0"])
+    controller, _, view, order_service = make_controller(tmp_path, menu_choices=["0"])
 
     controller.run()
 
@@ -85,7 +86,7 @@ def test_summary_reports_sample_count_and_total_stock(tmp_path):
 
 
 def test_summary_reports_total_orders_and_production_queue_length(tmp_path):
-    controller, _, view = make_controller(tmp_path, menu_choices=["0"])
+    controller, _, view, order_service = make_controller(tmp_path, menu_choices=["0"])
 
     controller.run()
 
@@ -95,7 +96,7 @@ def test_summary_reports_total_orders_and_production_queue_length(tmp_path):
 
 
 def test_choice_1_routes_to_sample_controller(tmp_path):
-    controller, subs, _ = make_controller(tmp_path, menu_choices=["1", "0"])
+    controller, subs, _, _os = make_controller(tmp_path, menu_choices=["1", "0"])
 
     controller.run()
 
@@ -103,7 +104,7 @@ def test_choice_1_routes_to_sample_controller(tmp_path):
 
 
 def test_choice_6_routes_to_shipment_controller(tmp_path):
-    controller, subs, _ = make_controller(tmp_path, menu_choices=["6", "0"])
+    controller, subs, _, _os = make_controller(tmp_path, menu_choices=["6", "0"])
 
     controller.run()
 
@@ -111,7 +112,7 @@ def test_choice_6_routes_to_shipment_controller(tmp_path):
 
 
 def test_choice_0_exits_without_routing_anywhere(tmp_path):
-    controller, subs, _ = make_controller(tmp_path, menu_choices=["0"])
+    controller, subs, _, _os = make_controller(tmp_path, menu_choices=["0"])
 
     controller.run()
 
@@ -119,8 +120,29 @@ def test_choice_0_exits_without_routing_anywhere(tmp_path):
 
 
 def test_unknown_choice_shows_error_message(tmp_path):
-    controller, _, view = make_controller(tmp_path, menu_choices=["9", "0"])
+    controller, _, view, _os = make_controller(tmp_path, menu_choices=["9", "0"])
 
     controller.run()
 
     assert any("잘못된" in m for m in view.messages)
+
+
+def test_summary_reports_current_time(tmp_path):
+    controller, _, view, _os = make_controller(tmp_path, menu_choices=["0"])
+
+    controller.run()
+
+    assert view.shown_summaries[0]["current_time"] == "2026-04-16 09:00:00"
+
+
+def test_summary_reports_pending_task_counts(tmp_path):
+    controller, _, view, order_service = make_controller(tmp_path, menu_choices=["0"])
+    reserved = order_service.reserve(sample_id="S-001", customer_name="A", quantity=10)
+    to_confirm = order_service.reserve(sample_id="S-001", customer_name="B", quantity=10)
+    order_service.approve(to_confirm.order_id)
+
+    controller.run()
+
+    tasks = {task["label"]: task["count"] for task in view.shown_summaries[0]["pending_tasks"]}
+    assert tasks["승인 대기"] == 1
+    assert tasks["출고 대기"] == 1

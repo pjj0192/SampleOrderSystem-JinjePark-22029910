@@ -1,3 +1,5 @@
+from collections.abc import Callable
+from datetime import datetime
 from typing import Protocol
 
 from app.services.order_service import OrderService
@@ -32,6 +34,7 @@ class MainMenuController:
         production_controller: SubController,
         shipment_controller: SubController,
         view: MainMenuView,
+        clock: Callable[[], datetime] = datetime.now,
     ) -> None:
         self._sample_service = sample_service
         self._order_service = order_service
@@ -45,14 +48,20 @@ class MainMenuController:
             "6": shipment_controller,
         }
         self._view = view
+        self._clock = clock
 
     def _build_summary(self) -> dict:
         samples = self._sample_service.list_all()
         return {
+            "current_time": self._clock().strftime("%Y-%m-%d %H:%M:%S"),
             "sample_count": len(samples),
             "total_stock": sum(sample.stock for sample in samples),
             "total_orders": self._order_service.total_order_count(),
             "production_queue_length": len(self._production_service.queue()),
+            "pending_tasks": [
+                {"label": "승인 대기", "count": len(self._order_service.list_reserved())},
+                {"label": "출고 대기", "count": len(self._order_service.list_confirmed())},
+            ],
         }
 
     def run(self) -> None:
