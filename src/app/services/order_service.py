@@ -7,6 +7,10 @@ from app.repositories.sample_repository import JsonSampleRepository, SampleNotFo
 from app.services.production_service import ProductionService
 
 
+class InvalidOrderStateError(Exception):
+    pass
+
+
 class OrderService:
     """Owns all order status transitions (PRD.md §5) -- Controllers/Views
     never mutate Order.status directly."""
@@ -100,3 +104,14 @@ class OrderService:
             for order in self._order_repository.list_all()
             if order.status == OrderStatus.RESERVED
         ]
+
+    def ship(self, order_id: str) -> Order:
+        order = self._order_repository.get(order_id)
+        if order.status != OrderStatus.CONFIRMED:
+            raise InvalidOrderStateError(
+                f"order {order_id} is {order.status.value}, not CONFIRMED"
+            )
+        order.status = OrderStatus.RELEASED
+        order.updated_at = self._clock()
+        self._order_repository.update(order)
+        return order
