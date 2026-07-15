@@ -1,7 +1,7 @@
 from typing import Protocol
 
 from app.models.order import Order
-from app.services.order_service import OrderService
+from app.services.order_service import InvalidOrderStateError, OrderService
 
 
 class OrderApprovalView(Protocol):
@@ -25,10 +25,14 @@ class OrderApprovalController:
     def handle_process(self) -> None:
         order_id = self._view.get_order_id_to_process()
         decision = self._view.get_approve_or_reject_decision()
-        if decision == "Y":
-            order = self._service.approve(order_id)
-        else:
-            order = self._service.reject(order_id)
+        try:
+            if decision == "Y":
+                order = self._service.approve(order_id)
+            else:
+                order = self._service.reject(order_id)
+        except InvalidOrderStateError as error:
+            self._view.show_message(f"처리 실패: {error}")
+            return
         self._view.show_order(order)
 
     def run(self) -> None:

@@ -52,6 +52,10 @@ class OrderService:
 
     def approve(self, order_id: str) -> Order:
         order = self._order_repository.get(order_id)
+        if order.status != OrderStatus.RESERVED:
+            raise InvalidOrderStateError(
+                f"order {order_id} is {order.status.value}, not RESERVED"
+            )
         sample = self._sample_repository.get(order.sample_id)
 
         if sample.stock >= order.quantity:
@@ -70,6 +74,10 @@ class OrderService:
 
     def reject(self, order_id: str) -> Order:
         order = self._order_repository.get(order_id)
+        if order.status != OrderStatus.RESERVED:
+            raise InvalidOrderStateError(
+                f"order {order_id} is {order.status.value}, not RESERVED"
+            )
         order.status = OrderStatus.REJECTED
         order.updated_at = self._clock()
         self._order_repository.update(order)

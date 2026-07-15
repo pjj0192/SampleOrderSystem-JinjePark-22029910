@@ -105,3 +105,17 @@ def test_run_shows_error_message_for_unknown_choice(tmp_path):
     controller.run()
 
     assert any("잘못된" in m for m in view.messages)
+
+
+def test_handle_process_on_already_processed_order_shows_error_not_raises(tmp_path):
+    controller, service, view = make_controller(
+        tmp_path, order_id_inputs=[], decisions=["Y", "Y"]
+    )
+    order = service.reserve(sample_id="S-001", customer_name="고객", quantity=10)
+    service.approve(order.order_id)  # already CONFIRMED
+    view._order_id_inputs.append(order.order_id)
+
+    controller.handle_process()
+
+    assert view.shown_orders == []
+    assert len(view.messages) == 1
